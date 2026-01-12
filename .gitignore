@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyTest
+.pytest_cache/
+*.pytest_cache
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Model files (large binary files - consider using Git LFS or excluding)
+*.pt
+!bnn_model.pt
+*.pth
+*.ckpt
+
+# Training data (large files - exclude from git, use data versioning tools)
+training_data*.pkl
+!training_data.pkl
+data/*.pkl
+*.npz
+*.npy
+
+# Output files
+results/
+test_output/
+comparison_plots/*.png
+*.log
+octave-workspace
+oct_check.log
+torch_check.log
+check_fix.log
+
+# Temporary files
+*.tmp
+*.bak
+test_output.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dependencies (if using submodules, this should be tracked)
+# dependencies/
+
+# Octave/MATLAB
+*.asv
+*.m~
