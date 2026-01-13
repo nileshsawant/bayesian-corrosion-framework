@@ -109,7 +109,7 @@ pip install -r requirements.txt
 
 ## Dependencies
 
-Requires the [Corrosion Modeling Applications](https://github.com/nsawant2024/corrosion-modeling-applications) repository (Octave-compatible fork) for physics simulations.
+Requires the [Corrosion Modeling Applications](https://github.com/nileshsawant/corrosion-modeling-applications) repository (Octave-compatible fork) for physics simulations.
 
 ## Training on Different Materials
 
