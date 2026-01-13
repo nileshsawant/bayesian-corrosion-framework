@@ -158,6 +158,9 @@ class PhysicsBridge:
                      return None
             
             if 'phi' in result_data:
+                # Add scalar alias for backward compatibility
+                if 'corrosionRate' in result_data:
+                    result_data['scalar'] = result_data['corrosionRate']
                 return result_data
             elif 'corrosionRate' in result_data:
                  print("Warning: returning only scalar rate, no field found.")

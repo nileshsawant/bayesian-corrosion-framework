@@ -61,3 +61,4 @@ Thumbs.db
 # Octave/MATLAB
 *.asv
 *.m~
+dependencies/corrosion-modeling-applications/

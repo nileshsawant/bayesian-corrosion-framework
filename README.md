@@ -38,10 +38,37 @@ Bayesian Neural Network (BNN) surrogate model for predicting galvanic corrosion 
 ./run_inference.py --model bnn_model.pt --data training_data.pkl --compare
 ```
 
+### 4. Active Learning (Recommended)
+Intelligent prediction system that automatically switches between fast BNN predictions and accurate physics simulations based on uncertainty:
+
+```bash
+# Single prediction with automatic physics fallback for high uncertainty
+./active_learning.py --model bnn_model.pt --data training_data.pkl \
+    --nacl 0.3 --temp 290 --ph 7.0 --flow 2.5
+
+# Batch predictions with auto-retraining
+./active_learning.py --model bnn_model.pt --data training_data.pkl \
+    --params batch_conditions.txt --retrain-every 10
+
+# Custom uncertainty threshold (default: 5%)
+./active_learning.py --model bnn_model.pt --data training_data.pkl \
+    --nacl 0.8 --temp 300 --ph 8.5 --flow 1.0 --uncertainty 0.03
+```
+
+**Benefits:**
+- Automatic result saving (pickle, CSV, PNG plots)
+- 3-10x speedup for interpolation-heavy workloads
+- Physics fallback ensures accuracy for extrapolation
+- Continuous model improvement through retraining
+- Full visualization: potential contours, current density, statistics
+
+See [ACTIVE_LEARNING_GUIDE.md](ACTIVE_LEARNING_GUIDE.md) for details.
+
 ## Documentation
 
 - **[QUICKSTART.md](QUICKSTART.md)** - Command reference and common tasks
 - **[TRAINING_GUIDE.md](TRAINING_GUIDE.md)** - Improving accuracy, multi-material models, scaling strategies
+- **[ACTIVE_LEARNING_GUIDE.md](ACTIVE_LEARNING_GUIDE.md)** - Active learning pipeline usage and configuration
 - **[TECHNICAL_NOTES.md](TECHNICAL_NOTES.md)** - Architecture details and implementation notes
 - **[CURRENT_DENSITY_ERROR_ANALYSIS.md](CURRENT_DENSITY_ERROR_ANALYSIS.md)** - Problem diagnosis and solution
 
@@ -52,6 +79,7 @@ bayesian-corrosion-framework/
 ├── generate_training_data.py    # Script 1: Generate physics simulation data
 ├── train_bnn_model.py            # Script 2: Train BNN on data
 ├── run_inference.py              # Script 3: Make predictions
+├── active_learning.py            # Script 4: Intelligent BNN/physics switching
 ├── merge_datasets.py             # Utility: Combine datasets
 ├── src/
 │   ├── bnn_model.py             # Core Bayesian Neural Network
@@ -62,6 +90,7 @@ bayesian-corrosion-framework/
 │   └── compare_predictions.py   # Visualization and validation
 ├── training_data.pkl            # Generated training dataset
 ├── bnn_model.pt                 # Trained model weights
+├── active_learning_results/     # Auto-saved predictions and plots
 └── tests/                       # Unit and integration tests
 ```
 

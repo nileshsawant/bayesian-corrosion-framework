@@ -71,8 +71,12 @@ function simOut = run_physics(conc, temp, ph, flow)
         
         dy = gC.aSim.dy;
         kappa = 5.0; % Seawater conductivity approx (S/m). Should be in gC.aSim.conductivity if set.
-        if isprop(gC.aSim, 'conductivity') && ~isempty(gC.aSim.conductivity)
-             kappa = gC.aSim.conductivity;
+        try
+            if isfield(gC.aSim, 'conductivity') && ~isempty(gC.aSim.conductivity)
+                 kappa = gC.aSim.conductivity;
+            end
+        catch
+            % Use default kappa if conductivity not available
         end
         
         % Flux J = -kappa * grad(phi). 
@@ -86,7 +90,8 @@ function simOut = run_physics(conc, temp, ph, flow)
         currentDensityProfile = kappa * (phi_surface - phi_above) / dy;
         
         % Average Current Density (A/m^2)
-        corrosionRate = mean(currentDensityProfile);
+        % Use sum/length instead of mean() for Octave compatibility
+        corrosionRate = sum(currentDensityProfile(:)) / numel(currentDensityProfile);
         
         fprintf('DEBUG: Calculated Corrosion Rate from Flux: %.6e A/m^2\n', corrosionRate);
         fflush(stdout);
