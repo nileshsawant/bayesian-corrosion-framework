@@ -45,7 +45,7 @@ class ActiveLearningPipeline:
                  model_path,
                  dataset_path=None,
                  uncertainty_threshold=0.05,
-                 retrain_every=10,
+                 retrain_every=1,
                  dependency_root='../corrosion-modeling-applications',
                  output_dir='active_learning_results'):
         """
@@ -53,7 +53,7 @@ class ActiveLearningPipeline:
             model_path: Path to trained BNN model
             dataset_path: Path to training dataset (for updates)
             uncertainty_threshold: Relative uncertainty threshold (default: 5%)
-            retrain_every: Retrain after accumulating this many new samples
+            retrain_every: Retrain after accumulating this many new samples (default: 1)
             dependency_root: Path to physics simulation code
         """
         self.model_path = model_path
@@ -558,8 +558,8 @@ Parameter file format (CSV):
     parser.add_argument('--uncertainty', type=float, default=0.05,
                        help='Uncertainty threshold (default: 0.05 = 5%%)')
     
-    parser.add_argument('--retrain-every', type=int, default=10,
-                       help='Retrain after N new samples (default: 10)')
+    parser.add_argument('--retrain-every', type=int, default=1,
+                       help='Retrain after N new samples (default: 1)')
     
     parser.add_argument('--force-physics', action='store_true',
                        help='Force physics simulation (for testing)')

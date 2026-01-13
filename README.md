@@ -4,6 +4,7 @@ Bayesian Neural Network (BNN) surrogate model for predicting galvanic corrosion 
 
 ## Key Features
 
+- **Self-improving active learning**: Model automatically retrains when physics simulations are needed for new parameter regions
 - **Direct prediction** of potential fields (phi) and current density (J) profiles
 - **3% average error** for corrosion rate predictions (vs 50% with numerical differentiation)
 - **Fast inference**: ~0.1s per prediction with uncertainty quantification
@@ -56,11 +57,18 @@ Intelligent prediction system that automatically switches between fast BNN predi
 ```
 
 **Benefits:**
+- **Self-improving**: Automatically retrains model when physics simulations are run for previously unseen parameters
 - Automatic result saving (pickle, CSV, PNG plots)
 - 3-10x speedup for interpolation-heavy workloads
 - Physics fallback ensures accuracy for extrapolation
-- Continuous model improvement through retraining
 - Full visualization: potential contours, current density, statistics
+
+**How it works:**
+1. BNN predicts with uncertainty quantification
+2. High uncertainty (>5%) → Physics simulation runs (~6.5 min)
+3. **Model immediately retrains** on new data (~1.4 min on H100)
+4. Dataset grows continuously (backups created automatically)
+5. Next similar prediction uses fast BNN instead of physics
 
 See [ACTIVE_LEARNING_GUIDE.md](ACTIVE_LEARNING_GUIDE.md) for details.
 
