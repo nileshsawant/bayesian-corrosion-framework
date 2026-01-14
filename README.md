@@ -48,6 +48,51 @@ When BNN uncertainty exceeds threshold (default 5%), the system automatically:
 3. Retrains model on expanded dataset
 4. Future predictions in this region use fast BNN
 
+## How It Works: Active Learning Workflow
+
+```mermaid
+flowchart TD
+    A[User Inputs:<br/>NaCl, T, pH, Flow] --> B[BNN Prediction<br/>~0.1s]
+    B --> C{Uncertainty<br/>> 5%?}
+    C -->|No: High Confidence| D[Return BNN Result<br/>400-1000× Speedup<br/>with ±2σ bands]
+    C -->|Yes: Needs Validation| E[Run Physics Sim<br/>~6.5 min]
+    E --> F[Add to Dataset<br/>Auto Backup]
+    F --> G[Retrain Model<br/>3-8 min]
+    G --> H[Return Physics Result<br/>Model Improved]
+    D --> I[Save: Plot + CSV + Pickle]
+    H --> I
+    
+    style A fill:#e1f5e1
+    style C fill:#fff4e6
+    style D fill:#d4edda
+    style E fill:#f8d7da
+    style G fill:#cce5ff
+```
+
+**Key advantages for DoD engineers:**
+- No manual decision-making required
+- Automatic validation through physics when uncertain
+- Self-improving: 16 → 32+ samples through use
+- Accessible to non-specialists (simple command-line interface)
+- Cost reduction: 400-1000× speedup for high-confidence regions
+
+### Detailed Workflow Diagram
+
+For a comprehensive view of the active learning system with all components, see the high-resolution flowchart:
+
+![Active Learning Detailed Flowchart](active_learning_flowchart_detailed.png)
+
+This diagram shows:
+- Input parameter ranges and validation
+- BNN forward pass with 1000 posterior samples
+- Separate uncertainty calculation for φ and J
+- Decision logic and branching paths
+- Adaptive retraining schedule (3000-8000 iterations)
+- Automatic backup and model versioning
+- Complete timing information for each step
+
+See [ACTIVE_LEARNING_FLOWCHART.md](ACTIVE_LEARNING_FLOWCHART.md) for workflow documentation and [generate_flowchart.py](generate_flowchart.py) to regenerate diagrams.
+
 ## Quick Start
 
 ### 1. Generate Training Data
