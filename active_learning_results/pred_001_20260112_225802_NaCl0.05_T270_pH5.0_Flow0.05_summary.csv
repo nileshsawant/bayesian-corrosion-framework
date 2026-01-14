@@ -1,7 +1,0 @@
-Parameter,Value
-NaCl_M,0.05
-Temperature_K,270.0
-pH,5.0
-Flow_m_per_s,0.05
-Corrosion_Rate_A_per_m2,-0.044347
-Source,physics

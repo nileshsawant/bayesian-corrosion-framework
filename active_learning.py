@@ -89,13 +89,13 @@ class ActiveLearningPipeline:
             'avg_uncertainty': []
         }
     
-    def predict_with_uncertainty(self, params, num_samples=100):
+    def predict_with_uncertainty(self, params, num_samples=500):
         """
         Run BNN prediction and calculate uncertainty metrics.
         
         Args:
             params: dict with keys ['NaCl', 'Temp', 'pH', 'Flow']
-            num_samples: Number of posterior samples for uncertainty
+            num_samples: Number of posterior samples for uncertainty (default: 500 for smoother predictions)
             
         Returns:
             pred_mean, pred_std, relative_uncertainty
@@ -115,15 +115,24 @@ class ActiveLearningPipeline:
         pred_mean = pred_mean[0].cpu().numpy()
         pred_std = pred_std[0].cpu().numpy()
         
-        # Calculate relative uncertainty (std / |mean|)
-        # Focus on phi portion (first 2541 values)
+        # Calculate relative uncertainty for both phi and J
         phi_len = 121 * 21
+        j_len = 60
+        
+        # Phi uncertainty
         phi_mean = pred_mean[:phi_len]
         phi_std = pred_std[:phi_len]
+        phi_rel_uncertainty = np.mean(phi_std) / np.abs(phi_mean).mean()
         
-        rel_uncertainty = np.mean(phi_std) / np.abs(phi_mean).mean()
+        # Current density uncertainty
+        j_mean = pred_mean[phi_len:phi_len+j_len]
+        j_std = pred_std[phi_len:phi_len+j_len]
+        j_rel_uncertainty = np.mean(j_std) / np.abs(j_mean).mean()
         
-        return pred_mean, pred_std, rel_uncertainty
+        # Combined uncertainty: use maximum (conservative approach)
+        rel_uncertainty = max(phi_rel_uncertainty, j_rel_uncertainty)
+        
+        return pred_mean, pred_std, rel_uncertainty, phi_rel_uncertainty, j_rel_uncertainty
     
     def run_physics_simulation(self, params):
         """
@@ -187,17 +196,21 @@ class ActiveLearningPipeline:
             print("⚠ Physics simulation forced")
             use_physics = True
             rel_uncertainty = None
+            phi_unc = None
+            j_unc = None
             pred_mean = None
             pred_std = None
         else:
             # Try BNN first
             print("→ Running BNN inference...")
-            pred_mean, pred_std, rel_uncertainty = self.predict_with_uncertainty(params)
+            pred_mean, pred_std, rel_uncertainty, phi_unc, j_unc = self.predict_with_uncertainty(params)
             
             self.stats['avg_uncertainty'].append(rel_uncertainty)
             
-            print(f"  Relative uncertainty: {rel_uncertainty*100:.2f}%")
-            print(f"  Threshold: {self.uncertainty_threshold*100:.2f}%")
+            print(f"  Potential uncertainty:       {phi_unc*100:.2f}%")
+            print(f"  Current density uncertainty: {j_unc*100:.2f}%")
+            print(f"  Combined uncertainty:        {rel_uncertainty*100:.2f}% (max of both)")
+            print(f"  Threshold:                   {self.uncertainty_threshold*100:.2f}%")
             
             use_physics = rel_uncertainty > self.uncertainty_threshold
         
@@ -245,6 +258,8 @@ class ActiveLearningPipeline:
                 'prediction': pred_mean,
                 'uncertainty': pred_std,
                 'relative_uncertainty': rel_uncertainty,
+                'phi_uncertainty': phi_unc,
+                'j_uncertainty': j_unc,
                 'source': 'bnn',
                 'params': params,
                 'corrosion_rate': corr_rate
@@ -267,7 +282,9 @@ class ActiveLearningPipeline:
         print(f"  Corrosion Rate: {result['corrosion_rate']:.4e} A/m²")
         
         if result['source'] == 'bnn':
-            print(f"  Confidence: {(1-result['relative_uncertainty'])*100:.1f}%")
+            print(f"  Overall Confidence: {(1-result['relative_uncertainty'])*100:.1f}%")
+            print(f"    φ Confidence: {(1-result.get('phi_uncertainty', 0))*100:.1f}%")
+            print(f"    J Confidence: {(1-result.get('j_uncertainty', 0))*100:.1f}%")
         
         print(f"{'-'*70}")
     
@@ -286,6 +303,13 @@ class ActiveLearningPipeline:
         output = result['prediction']
         phi_array = output[:phi_len].reshape(121, 21)
         j_array = output[phi_len:phi_len+j_len]
+        
+        # Extract uncertainty if available (BNN predictions)
+        has_uncertainty = result['source'] == 'bnn' and result.get('uncertainty') is not None
+        if has_uncertainty:
+            uncertainty = result['uncertainty']
+            phi_std = uncertainty[:phi_len].reshape(121, 21)
+            j_std = uncertainty[phi_len:phi_len+j_len]
         
         # Save raw data (pickle)
         data_file = self.output_dir / f"{prefix}_data.pkl"
@@ -336,16 +360,23 @@ class ActiveLearningPipeline:
         plt.colorbar(contour, ax=ax1, label='φ (V)')
         ax1.set_aspect('equal')
         # Mark materials
-        ax1.axvline(x=3.0, color='yellow', linestyle='--', linewidth=1.5, alpha=0.7)
-        ax1.text(1.5, 0.9, 'I625\n(Cathode)', ha='center', fontsize=10, 
-                bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.7))
-        ax1.text(4.5, 0.9, 'CuNi\n(Anode)', ha='center', fontsize=10,
-                bbox=dict(boxstyle='round', facecolor='lightcoral', alpha=0.7))
+        #ax1.axvline(x=3.0, color='yellow', linestyle='--', linewidth=1.5, alpha=0.7)
+        #ax1.text(1.5, 0.9, 'I625\n(Cathode)', ha='center', fontsize=10, 
+        #        bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.7))
+        #ax1.text(4.5, 0.9, 'CuNi\n(Anode)', ha='center', fontsize=10,
+        #        bbox=dict(boxstyle='round', facecolor='lightcoral', alpha=0.7))
         
         # Plot 2: Potential along anode boundary (y=0)
         ax2 = axes[0, 1]
         phi_anode = phi_array[:, 0]  # First row (y=0)
         ax2.plot(x, phi_anode, 'b-', linewidth=2, label='Anode (y=0)')
+        
+        # Add uncertainty band if available
+        if has_uncertainty:
+            phi_std_anode = phi_std[:, 0]
+            ax2.fill_between(x, phi_anode - 2*phi_std_anode, phi_anode + 2*phi_std_anode,
+                            alpha=0.3, color='blue', label='±2σ uncertainty')
+        
         ax2.set_xlabel('x (m)')
         ax2.set_ylabel('Potential φ (V)')
         ax2.set_title('Potential along Anode Boundary')
@@ -357,6 +388,12 @@ class ActiveLearningPipeline:
         # Anode is nodes 61-120 (x = 3m to 6m), cathode is nodes 1-60 (x = 0 to 3m)
         x_anode = x[60:120]  # Last 60 points (anode portion from 3m to 6m)
         ax3.plot(x_anode, j_array, 'r-', linewidth=2, label='Current Density')
+        
+        # Add uncertainty band if available
+        if has_uncertainty:
+            ax3.fill_between(x_anode, j_array - 2*j_std, j_array + 2*j_std,
+                            alpha=0.3, color='red', label='±2σ uncertainty')
+        
         ax3.axhline(y=result['corrosion_rate'], color='g', linestyle='--', 
                     linewidth=1.5, label=f'Average: {result["corrosion_rate"]:.3e} A/m²')
         ax3.axvline(x=3.0, color='k', linestyle=':', linewidth=1, label='Cathode-Anode Junction')
@@ -378,8 +415,12 @@ class ActiveLearningPipeline:
         ]
         
         if result['source'] == 'bnn':
+            phi_unc = result.get('phi_uncertainty', 0)
+            j_unc = result.get('j_uncertainty', 0)
             info_text.extend([
-                f"Relative Uncertainty: {result['relative_uncertainty']*100:.2f}%",
+                f"Overall Uncertainty: {result['relative_uncertainty']*100:.2f}%",
+                f"  φ Uncertainty: {phi_unc*100:.2f}%",
+                f"  J Uncertainty: {j_unc*100:.2f}%",
                 f"Confidence: {(1-result['relative_uncertainty'])*100:.1f}%",
                 "",
             ])
@@ -462,12 +503,23 @@ class ActiveLearningPipeline:
         print(f"Backing up model: {model_backup}")
         os.system(f"cp {self.model_path} {model_backup}")
         
-        # Retrain with more iterations for fine-tuning
-        print(f"\nRetraining BNN (5000 iterations for fine-tuning)...")
+        # Retrain with adaptive iterations based on samples added
+        # For fine-tuning: use moderate iterations (3000-5000 is sufficient for small updates)
+        num_new = len(self.new_samples)
+        num_total = len(updated_inputs)
+        
+        if num_total <= 30:
+            num_iter = 3000  # Small datasets: quick convergence
+        elif num_total <= 50:
+            num_iter = 5000  # Medium datasets
+        else:
+            num_iter = 8000  # Larger datasets: more iterations needed
+        
+        print(f"\nRetraining BNN ({num_iter} iterations, added {num_new} samples)...")
         train_bnn_batch(
             dataset=updated_dataset,
             model_path=self.model_path,
-            num_iterations=5000,
+            num_iterations=num_iter,
             learning_rate=0.001,  # Lower LR for fine-tuning
             hidden_dims=[64, 128, 64]
         )

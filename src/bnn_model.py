@@ -130,13 +130,30 @@ class CorrosionBNN:
         # Output layer (no activation)
         mu = torch.mm(h, weights[f'w{len(self.hidden_dims)}'].t()) + weights[f'b{len(self.hidden_dims)}']
         
-        # Observation noise - use reasonable prior for normalized data (mean 0, std 1)
-        # LogNormal(0, 0.5) gives median of 1.0, which is appropriate for normalized data
-        sigma = pyro.sample("sigma", dist.LogNormal(0.0, 0.5))
+        # Separate observation noise for phi and J regions
+        # Phi: first 2541 values (121x21 spatial field)
+        # J: last 60 values (current density profile)
+        phi_len = 121 * 21  # 2541
         
-        # Likelihood
+        # LogNormal priors for noise - allow different scales for phi vs J
+        sigma_phi = pyro.sample("sigma_phi", dist.LogNormal(0.0, 0.5))
+        sigma_j = pyro.sample("sigma_j", dist.LogNormal(0.0, 0.5))
+        
+        # Split outputs and apply appropriate noise model
+        mu_phi = mu[:, :phi_len]
+        mu_j = mu[:, phi_len:]
+        
+        # Likelihood with region-specific noise
         with pyro.plate("data", x.shape[0]):
-            obs = pyro.sample("obs", dist.Normal(mu, sigma).to_event(1), obs=y)
+            if y is not None:
+                y_phi = y[:, :phi_len]
+                y_j = y[:, phi_len:]
+            else:
+                y_phi = None
+                y_j = None
+            
+            obs_phi = pyro.sample("obs_phi", dist.Normal(mu_phi, sigma_phi).to_event(1), obs=y_phi)
+            obs_j = pyro.sample("obs_j", dist.Normal(mu_j, sigma_j).to_event(1), obs=y_j)
         
         return mu
     
@@ -171,11 +188,18 @@ class CorrosionBNN:
             # Sample bias
             pyro.sample(f'b{i}', dist.Normal(b_loc, b_scale).to_event(1))
         
-        # Sigma parameter - initialize directly on device
-        sigma_loc = pyro.param('sigma_loc', torch.tensor(0.0, device=self.device))
-        sigma_scale = pyro.param('sigma_scale', torch.tensor(0.1, device=self.device),
-                                 constraint=dist.constraints.positive)
-        pyro.sample("sigma", dist.LogNormal(sigma_loc, sigma_scale))
+        # Separate sigma parameters for phi and J regions
+        # Sigma_phi for potential field (2541 values)
+        sigma_phi_loc = pyro.param('sigma_phi_loc', torch.tensor(0.0, device=self.device))
+        sigma_phi_scale = pyro.param('sigma_phi_scale', torch.tensor(0.1, device=self.device),
+                                      constraint=dist.constraints.positive)
+        pyro.sample("sigma_phi", dist.LogNormal(sigma_phi_loc, sigma_phi_scale))
+        
+        # Sigma_j for current density (60 values)
+        sigma_j_loc = pyro.param('sigma_j_loc', torch.tensor(0.0, device=self.device))
+        sigma_j_scale = pyro.param('sigma_j_scale', torch.tensor(0.1, device=self.device),
+                                    constraint=dist.constraints.positive)
+        pyro.sample("sigma_j", dist.LogNormal(sigma_j_loc, sigma_j_scale))
     
     def train_step(self, x, y, num_iterations=1000):
         """

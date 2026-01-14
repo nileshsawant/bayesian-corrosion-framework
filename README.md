@@ -5,18 +5,53 @@ Bayesian Neural Network (BNN) surrogate model for predicting galvanic corrosion 
 ## Key Features
 
 - **Self-improving active learning**: Model automatically retrains when physics simulations are needed for new parameter regions
+- **Uncertainty-aware predictions**: Separate uncertainty quantification for potential (φ) and current density (J) with visual confidence bands
 - **Direct prediction** of potential fields (phi) and current density (J) profiles
 - **3% average error** for corrosion rate predictions (vs 50% with numerical differentiation)
 - **Fast inference**: ~0.1s per prediction with uncertainty quantification
-- **GPU accelerated**: 50+ iterations/second on H100 GPU
+- **GPU accelerated**: 66+ iterations/second on H100 GPU
+- **Separate noise learning**: Independent σ_φ and σ_J parameters for optimal uncertainty estimates
 - **Material support**: CuNi, HY80, HY100, SS316, I625, Ti
 
 ## Current Performance
 
-- **Potential field**: ~0.27% error
-- **Current density**: ~3.17% error (16 training samples)
-- **Training time**: ~3 minutes (10k iterations on H100)
+- **Potential field**: ~0.17% uncertainty on training data
+- **Current density**: ~1.95% uncertainty on training data (32 training samples)
+- **Training time**: ~6.3 minutes (25k iterations on H100)
+- **Network architecture**: [128, 256, 128] with separate noise learning for φ and J
 - **Data generation**: ~6.5 minutes per sample
+- **Self-improving**: Automatically retrains and grows dataset through active learning
+
+## Example Results with Uncertainty Quantification
+
+The framework provides uncertainty-aware predictions with visual confidence bands:
+
+### High-Confidence BNN Prediction (Training Data Region)
+**Parameters**: NaCl=0.10M, T=278K, pH=6.0, Flow=0.10m/s
+
+![BNN Prediction with Uncertainty Bands](active_learning_results/pred_001_20260113_184911_NaCl0.10_T278_pH6.0_Flow0.10_plot.png)
+
+- **φ Uncertainty**: 0.17% (blue shaded band shows ±2σ confidence)
+- **J Uncertainty**: 1.95% (red shaded band shows ±2σ confidence)
+- **Combined Confidence**: 98.1% - BNN used instead of physics simulation
+- **Speedup**: ~400× faster than physics simulation (0.1s vs 6.5 min)
+
+Key features visible in the plot:
+- **Top-left**: Potential (φ) vs position with ±2σ uncertainty band (blue shading)
+- **Top-right**: Current density (J) vs position with ±2σ uncertainty band (red shading)
+- **Bottom-left**: Statistics comparing BNN vs physics simulation
+- **Bottom-right**: Parameter panel showing input conditions
+
+### Physics Simulation Triggered (High Uncertainty Region)
+**Parameters**: NaCl=0.30M, T=300K, pH=8.0, Flow=0.01m/s (boundary conditions)
+
+![Physics Simulation at Boundary](active_learning_results/pred_001_20260113_182813_NaCl0.10_T278_pH6.0_Flow0.10_plot.png)
+
+When BNN uncertainty exceeds threshold (default 5%), the system automatically:
+1. Falls back to physics simulation for accuracy
+2. Adds new data point to training set (with automatic backup)
+3. Retrains model on expanded dataset
+4. Future predictions in this region use fast BNN
 
 ## Quick Start
 
@@ -64,11 +99,12 @@ Intelligent prediction system that automatically switches between fast BNN predi
 - Full visualization: potential contours, current density, statistics
 
 **How it works:**
-1. BNN predicts with uncertainty quantification
-2. High uncertainty (>5%) → Physics simulation runs (~6.5 min)
-3. **Model immediately retrains** on new data (~1.4 min on H100)
+1. BNN predicts with uncertainty quantification (separate φ and J uncertainty)
+2. High uncertainty (>5% on either φ or J) → Physics simulation runs (~6.5 min)
+3. **Model immediately retrains** on new data (~3-8 min on H100, adaptive based on dataset size)
 4. Dataset grows continuously (backups created automatically)
 5. Next similar prediction uses fast BNN instead of physics
+6. Visual confidence bands (±2σ) show prediction reliability
 
 See [ACTIVE_LEARNING_GUIDE.md](ACTIVE_LEARNING_GUIDE.md) for details.
 

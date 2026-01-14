@@ -1,9 +1,0 @@
-Parameter,Value
-NaCl_M,0.08
-Temperature_K,275.0
-pH,5.5
-Flow_m_per_s,0.08
-Corrosion_Rate_A_per_m2,-0.048068054020404816
-Source,bnn
-Relative_Uncertainty,0.003132870187982917
-Confidence_Percent,99.69

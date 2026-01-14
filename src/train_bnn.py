@@ -30,8 +30,8 @@ def load_dataset(dataset_path):
     return dataset
 
 def train_bnn_batch(dataset=None, data_path=None, model_path="bnn_model.pt", 
-                    num_iterations=5000, device='auto', learning_rate=0.005, 
-                    hidden_dims=[64, 128, 64]):
+                    num_iterations=5000, device='auto', learning_rate=0.003, 
+                    hidden_dims=[128, 256, 128]):
     """
     Train BNN on full dataset.
     
@@ -124,6 +124,26 @@ def train_bnn_batch(dataset=None, data_path=None, model_path="bnn_model.pt",
     print(f"Initial Loss: {losses[0]:.2f}")
     print(f"Final Loss: {losses[-1]:.2f}")
     print(f"Loss Reduction: {(1 - losses[-1]/losses[0])*100:.1f}%")
+    
+    # Report learned noise parameters
+    try:
+        import pyro
+        sigma_phi_loc = pyro.param('sigma_phi_loc').item()
+        sigma_phi_scale = pyro.param('sigma_phi_scale').item()
+        sigma_j_loc = pyro.param('sigma_j_loc').item()
+        sigma_j_scale = pyro.param('sigma_j_scale').item()
+        
+        # Convert to actual sigma values (median of LogNormal)
+        sigma_phi_median = np.exp(sigma_phi_loc)
+        sigma_j_median = np.exp(sigma_j_loc)
+        
+        print(f"\nLearned Noise Parameters:")
+        print(f"  Phi noise (σ_φ):  {sigma_phi_median:.4f} (loc={sigma_phi_loc:.4f}, scale={sigma_phi_scale:.4f})")
+        print(f"  J noise (σ_J):    {sigma_j_median:.4f} (loc={sigma_j_loc:.4f}, scale={sigma_j_scale:.4f})")
+        print(f"  Ratio (σ_J/σ_φ):  {sigma_j_median/sigma_phi_median:.2f}x")
+    except:
+        pass
+    
     print("=" * 60)
     
     # Save model using wrapper method
