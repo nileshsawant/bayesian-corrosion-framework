@@ -31,11 +31,6 @@ The framework provides uncertainty-aware predictions with visual confidence band
 
 ![BNN Prediction with Uncertainty Bands](active_learning_results/pred_001_20260113_184911_NaCl0.10_T278_pH6.0_Flow0.10_plot.png)
 
-- **φ Uncertainty**: 0.17% (blue shaded band shows ±2σ confidence)
-- **J Uncertainty**: 1.95% (red shaded band shows ±2σ confidence)
-- **Combined Confidence**: 98.1% - BNN used instead of physics simulation
-- **Speedup**: ~400× faster than physics simulation (0.1s vs 6.5 min)
-
 Key features visible in the plot:
 - **Top-left**: Potential (φ) vs position with ±2σ uncertainty band (blue shading)
 - **Top-right**: Current density (J) vs position with ±2σ uncertainty band (red shading)
@@ -43,7 +38,7 @@ Key features visible in the plot:
 - **Bottom-right**: Parameter panel showing input conditions
 
 ### Physics Simulation Triggered (High Uncertainty Region)
-**Parameters**: NaCl=0.30M, T=300K, pH=8.0, Flow=0.01m/s (boundary conditions)
+**Parameters**: NaCl=0.10M, T=300K, pH=8.0, Flow=0.01m/s (boundary conditions)
 
 ![Physics Simulation at Boundary](active_learning_results/pred_001_20260113_182813_NaCl0.10_T278_pH6.0_Flow0.10_plot.png)
 
@@ -205,8 +200,13 @@ Traditional approach: Train BNN on phi → Calculate J = -κ∇φ
 ## Citation
 
 If you use this code, please cite:
-```
-[Citation to be added]
+```bibtex
+@software{sawant2026bayesian,
+  author = {Sawant, Nilesh},
+  title = {Bayesian Corrosion Framework: Uncertainty-Aware Active Learning for Galvanic Corrosion Prediction in Marine Environments},
+  year = {2026},
+  url = {https://github.com/nileshsawant/bayesian-corrosion-framework}
+}
 ```
 
 ## License
