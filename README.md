@@ -69,7 +69,7 @@ flowchart TD
     style G fill:#cce5ff
 ```
 
-**Key advantages for DoD engineers:**
+**Key advantages for engineers:**
 - No manual decision-making required
 - Automatic validation through physics when uncertain
 - Self-improving: 16 → 32+ samples through use
